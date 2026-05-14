@@ -1,0 +1,194 @@
+networks:
+  finshield-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  vault-data:
+  elasticsearch-data:
+  jenkins-data:
+
+services:
+
+  # ── 1. FinShield Application ──────────────────────────────────────────────
+  finshield-api:
+    build:
+      context: ./app/backend        # relative to THIS file (project root)
+      dockerfile: Dockerfile
+    image: finshield-api:latest
+    container_name: finshield-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_VERSION=1.0.0
+      - APP_ENV=production
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=finshield-root-token
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=finshield
+      - DB_USER=finshield
+      - DB_PASSWORD=finshield_secret
+      - LOGSTASH_HOST=logstash      # Enables TCP log shipping to ELK
+      - LOGSTASH_PORT=5000
+    depends_on:
+      vault:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    networks:
+      - finshield-net
+    volumes:
+      - ./app/backend/src:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  # ── 2. PostgreSQL ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: finshield-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=finshield
+      - POSTGRES_USER=finshield
+      - POSTGRES_PASSWORD=finshield_secret
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - finshield-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finshield"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 3. HashiCorp Vault ────────────────────────────────────────────────────
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: finshield-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=finshield-root-token
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_ADDR=http://127.0.0.1:8200      # Fixes docker exec vault CLI defaulting to HTTPS
+      - VAULT_TOKEN=finshield-root-token
+    command: server -dev
+    volumes:
+      - vault-data:/vault/data
+    networks:
+      - finshield-net
+    healthcheck:
+      test: ["CMD-SHELL", "vault status -address=http://localhost:8200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 4. Vault Init (one-shot) ──────────────────────────────────────────────
+  vault-init:
+    image: hashicorp/vault:1.17
+    container_name: finshield-vault-init
+    restart: "no"
+    depends_on:
+      vault:
+        condition: service_started
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=finshield-root-token
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 5
+        vault kv put secret/finshield/database \
+          host=postgres port=5432 name=finshield \
+          user=finshield password=finshield_secret
+        vault kv put secret/finshield/api-keys \
+          fraud_api_key=fs-fraud-key-xyz \
+          jwt_secret=finshield-jwt-super-secret
+        echo "Vault secrets initialized"
+    networks:
+      - finshield-net
+
+  # ── 5. Elasticsearch ──────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: finshield-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - cluster.routing.allocation.disk.threshold_enabled=false  # Disable disk watermark (dev mode)
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - finshield-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+  # ── 6. Logstash ───────────────────────────────────────────────────────────
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.0
+    container_name: finshield-logstash
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/elk/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+    environment:
+      - LS_JAVA_OPTS=-Xms256m -Xmx256m
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - finshield-net
+
+  # ── 7. Kibana ─────────────────────────────────────────────────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: finshield-kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - finshield-net
+
+  # ── 8. Jenkins (CI/CD) ────────────────────────────────────────────────────
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: finshield-jenkins
+    restart: unless-stopped
+    privileged: true
+    user: root
+    ports:
+      - "9090:8080"
+      - "50000:50000"
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock   # Docker-in-Docker access
+    networks:
+      - finshield-net

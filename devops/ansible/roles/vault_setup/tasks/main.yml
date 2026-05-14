@@ -1,0 +1,64 @@
+---
+# Role: vault_setup — tasks/main.yml
+# Initializes HashiCorp Vault with FinShield secrets
+
+- name: Wait for Vault to be reachable
+  uri:
+    url: "{{ vault_addr }}/v1/sys/health"
+    method: GET
+    status_code: [200, 429, 472, 501, 503]
+  register: vault_health
+  retries: 10
+  delay: 5
+  until: vault_health.status in [200, 429]
+
+- name: Enable KV secrets engine (v2)
+  community.hashi_vault.vault_write:
+    url: "{{ vault_addr }}"
+    token: "{{ vault_token }}"
+    path: sys/mounts/secret
+    data:
+      type: kv
+      options:
+        version: "2"
+  ignore_errors: yes   # Already enabled in dev mode
+
+- name: Store database credentials in Vault
+  community.hashi_vault.vault_kv2_write:
+    url: "{{ vault_addr }}"
+    token: "{{ vault_token }}"
+    engine_mount_point: secret
+    path: finshield/database
+    data:
+      host: "{{ db_host }}"
+      port: "{{ db_port | string }}"
+      name: "{{ db_name }}"
+      user: "{{ db_user }}"
+      password: "{{ db_password }}"
+  no_log: true
+
+- name: Store API keys in Vault
+  community.hashi_vault.vault_kv2_write:
+    url: "{{ vault_addr }}"
+    token: "{{ vault_token }}"
+    engine_mount_point: secret
+    path: finshield/api-keys
+    data:
+      fraud_api_key: "{{ fraud_api_key }}"
+      jwt_secret: "{{ jwt_secret }}"
+  no_log: true
+
+- name: Store Docker Hub credentials in Vault
+  community.hashi_vault.vault_kv2_write:
+    url: "{{ vault_addr }}"
+    token: "{{ vault_token }}"
+    engine_mount_point: secret
+    path: finshield/dockerhub
+    data:
+      username: "{{ dockerhub_user }}"
+      password: "{{ dockerhub_pass }}"
+  no_log: true
+
+- name: Confirm Vault secrets are stored
+  debug:
+    msg: "✅ All FinShield secrets securely stored in Vault at {{ vault_addr }}"

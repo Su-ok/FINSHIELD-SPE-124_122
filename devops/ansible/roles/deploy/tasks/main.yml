@@ -1,0 +1,48 @@
+---
+# Role: deploy — tasks/main.yml
+# Pulls and runs the latest FinShield Docker image
+
+- name: Log in to Docker Hub
+  community.docker.docker_login:
+    username: "{{ dockerhub_user }}"
+    password: "{{ dockerhub_pass }}"
+  no_log: true
+
+- name: Pull latest FinShield image
+  community.docker.docker_image:
+    name: "{{ docker_image }}"
+    tag: "{{ docker_tag | default('latest') }}"
+    source: pull
+    force_source: yes
+
+- name: Copy docker-compose file to target
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ compose_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Stop existing containers (zero-downtime: new comes up first via K8s)
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_dir }}"
+    state: present
+    pull: always
+    recreate: smart
+  environment:
+    DOCKER_TAG: "{{ docker_tag | default('latest') }}"
+    VAULT_TOKEN: "{{ vault_token }}"
+
+- name: Verify container is running
+  community.docker.docker_container_info:
+    name: finshield-api
+  register: container_info
+
+- name: Assert container is healthy
+  assert:
+    that:
+      - container_info.container.State.Running == true
+    fail_msg: "❌ Container not running after deploy!"
+    success_msg: "✅ Container running — live patching complete"
+
+- name: Docker Hub logout
+  community.docker.docker_login:
+    state: absent

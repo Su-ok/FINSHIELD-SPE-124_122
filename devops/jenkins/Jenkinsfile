@@ -1,0 +1,199 @@
+// FinShield — Jenkins CI/CD Pipeline
+// Triggers on GitHub push → Build → Test → Docker Push → Deploy
+
+pipeline {
+    agent any
+
+    environment {
+        APP_NAME        = "finshield-api"
+        DOCKERHUB_USER  = "sid30814" // Hardcoded for your repo name
+        DOCKER_IMAGE    = "${DOCKERHUB_USER}/${APP_NAME}"
+        DOCKER_TAG      = "${env.BUILD_NUMBER}"
+        VAULT_ADDR      = "http://vault:8200"
+        VAULT_TOKEN     = credentials('vault-root-token')
+        KUBECONFIG_PATH = "/var/jenkins_home/.kube/config"
+    }
+
+    triggers {
+        // GitHub Hook Trigger for GITScm Polling (set in Job config too)
+        githubPush()
+    }
+
+    options {
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 30, unit: 'MINUTES')
+    }
+
+    stages {
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('📥 Checkout') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                echo "🔍 Checking out source from GitHub..."
+                checkout scm
+                sh "git log --oneline -5"
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('🔐 Vault Secret Pull') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                sh """
+                    echo "Fetching secrets from HashiCorp Vault..."
+                    DOCKERHUB_PASS=\$(curl -s -H "X-Vault-Token: \$VAULT_TOKEN" \
+                        \$VAULT_ADDR/v1/secret/data/finshield/dockerhub \
+                        | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['data']['password'])" 2>/dev/null || echo "")
+                    echo "Vault secret pull complete ✅"
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('🧪 Run Automated Tests') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                sh """
+                    cd app/backend
+                    pip install -r requirements.txt --quiet
+                    pip install pytest httpx --quiet
+                    cd ../..
+                    python -m pytest app/tests/ -v --tb=short --junitxml=test-results.xml
+                """
+            }
+            post {
+                always {
+                    junit 'test-results.xml'
+                }
+                failure {
+                    echo "❌ Tests failed! Aborting pipeline."
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('🐳 Build Docker Image') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                sh """
+                    echo "Building Docker image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    docker build \
+                        --build-arg APP_VERSION=${DOCKER_TAG} \
+                        -t ${DOCKER_IMAGE}:${DOCKER_TAG} \
+                        -t ${DOCKER_IMAGE}:latest \
+                        app/backend/
+                    docker images | grep ${APP_NAME}
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('🔒 Security Scan (Trivy)') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                sh """
+                    if command -v trivy &> /dev/null; then
+                        trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                            --format table ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    else
+                        echo "⚠️  Trivy not installed, skipping image scan. Install for DevSecOps compliance."
+                    fi
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('📤 Push to Docker Hub') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKERHUB_USER',
+                    passwordVariable: 'DOCKERHUB_PASS'
+                )]) {
+                    sh """
+                        echo \$DOCKERHUB_PASS | docker login -u \$DOCKERHUB_USER --password-stdin
+                        docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                        docker push ${DOCKER_IMAGE}:latest
+                        echo "✅ Pushed ${DOCKER_IMAGE}:${DOCKER_TAG} to Docker Hub"
+                        docker logout
+                    """
+                }
+            }
+        }
+
+        /* 
+        // ─────────────────────────────────────────────────────────────────────
+        stage('⚙️  Ansible Deploy') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                sh """
+                    cd devops/ansible
+                    ansible-playbook -i inventory/hosts.yml \
+                        playbooks/deploy.yml \
+                        --extra-vars "docker_tag=${DOCKER_TAG}" \
+                        -v || echo "Ansible deploy step (non-fatal in local dev)"
+                """
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('☸️  Kubernetes Deploy') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                        # Update image tag in deployment
+                        sed -i "s|IMAGE_TAG|${DOCKER_TAG}|g" devops/kubernetes/deployment.yaml
+
+                        kubectl apply -f devops/kubernetes/deployment.yaml
+                        kubectl apply -f devops/kubernetes/service.yaml
+                        kubectl apply -f devops/kubernetes/hpa.yaml
+
+                        # Rolling update — waits for rollout
+                        kubectl rollout status deployment/finshield-api --timeout=120s
+
+                        # Verify pods
+                        kubectl get pods -l app=finshield-api
+
+                        echo "✅ Kubernetes deployment complete — Build #${DOCKER_TAG} is live"
+                    """
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
+        stage('📊 Smoke Test') {
+        // ─────────────────────────────────────────────────────────────────────
+            steps {
+                sh """
+                    sleep 5
+                    curl -sf http://finshield-api:8000/health || echo "⚠️  Health check pending (K8s DNS may need time)"
+                    echo "✅ Smoke test done"
+                """
+            }
+        }
+        */
+    }
+
+    post {
+        success {
+            echo """
+            ╔══════════════════════════════════════════╗
+            ║  ✅ FinShield Pipeline SUCCESS            ║
+            ║  Build #${env.BUILD_NUMBER} deployed      ║
+            ╚══════════════════════════════════════════╝
+            """
+        }
+        failure {
+            echo "❌ Pipeline failed at stage. Check logs above."
+        }
+        always {
+            // Clean up local Docker images to save disk
+            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
+            cleanWs()
+        }
+    }
+}

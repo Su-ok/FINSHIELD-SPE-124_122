@@ -1,0 +1,121 @@
+{# FinShield — docker-compose Jinja2 Template for Ansible Deploy Role #}
+{# Rendered by Ansible onto target server at {{ compose_dir }}/docker-compose.yml #}
+
+networks:
+  finshield-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  vault-data:
+  elasticsearch-data:
+
+services:
+
+  # ── FinShield API ─────────────────────────────────────────────────────────
+  finshield-api:
+    image: "{{ docker_image }}:{{ docker_tag | default('latest') }}"
+    container_name: finshield-api
+    restart: unless-stopped
+    ports:
+      - "{{ app_port }}:8000"
+    environment:
+      - APP_VERSION={{ docker_tag | default('latest') }}
+      - APP_ENV=production
+      - VAULT_ADDR={{ vault_addr }}
+      - VAULT_TOKEN={{ vault_token }}
+      - DB_HOST={{ db_host }}
+      - DB_PORT={{ db_port }}
+      - DB_NAME={{ db_name }}
+      - DB_USER={{ db_user }}
+      - DB_PASSWORD={{ db_password }}
+      - LOGSTASH_HOST=logstash
+      - LOGSTASH_PORT=5000
+    depends_on:
+      - vault
+      - postgres
+      - logstash
+    networks:
+      - finshield-net
+
+  # ── PostgreSQL ────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: finshield-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB={{ db_name }}
+      - POSTGRES_USER={{ db_user }}
+      - POSTGRES_PASSWORD={{ db_password }}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - finshield-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ db_user }}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── HashiCorp Vault ───────────────────────────────────────────────────────
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: finshield-vault
+    restart: unless-stopped
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID={{ vault_token }}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+    command: server -dev
+    volumes:
+      - vault-data:/vault/data
+    networks:
+      - finshield-net
+
+  # ── Elasticsearch ─────────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: finshield-elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - finshield-net
+
+  # ── Logstash ──────────────────────────────────────────────────────────────
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.13.0
+    container_name: finshield-logstash
+    restart: unless-stopped
+    ports:
+      - "5000:5000/tcp"
+      - "5044:5044"
+    environment:
+      - LS_JAVA_OPTS=-Xms256m -Xmx256m
+    depends_on:
+      - elasticsearch
+    networks:
+      - finshield-net
+
+  # ── Kibana ────────────────────────────────────────────────────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.0
+    container_name: finshield-kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - finshield-net

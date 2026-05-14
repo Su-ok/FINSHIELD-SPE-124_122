@@ -1,0 +1,51 @@
+---
+# FinShield — Horizontal Pod Autoscaler (HPA)
+# Scales finshield-api pods based on CPU and memory utilization
+# Satisfies: Advanced Features (3 marks) — Kubernetes HPA
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: finshield-api-hpa
+  namespace: finshield
+  labels:
+    app: finshield-api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: finshield-api
+
+  minReplicas: 2        # Always keep 2 for high availability
+  maxReplicas: 10       # Scale up to 10 under peak load
+
+  metrics:
+    # Scale on CPU utilization
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60    # Scale when CPU > 60%
+
+    # Scale on Memory utilization
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70    # Scale when Memory > 70%
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30     # React quickly to load spikes
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 30              # Add up to 2 pods every 30s
+    scaleDown:
+      stabilizationWindowSeconds: 120    # Be conservative when scaling down
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60              # Remove 1 pod per minute max

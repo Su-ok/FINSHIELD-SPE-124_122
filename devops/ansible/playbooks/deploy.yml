@@ -1,0 +1,55 @@
+---
+# FinShield — Ansible Deploy Playbook
+# Orchestrates: Vault setup → Docker pull → App deploy → ELK config
+# Usage: ansible-playbook -i inventory/hosts.yml playbooks/deploy.yml
+
+- name: FinShield Full Stack Deploy
+  hosts: finshield_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    app_name: finshield-api
+    docker_registry: docker.io
+    docker_image: "{{ dockerhub_user }}/finshield-api"
+    app_port: 8000
+    vault_addr: "http://{{ vault_host }}:8200"
+    compose_dir: /opt/finshield
+
+  pre_tasks:
+    - name: Show deployment info
+      debug:
+        msg: |
+          ╔══════════════════════════════════════════╗
+          ║  FinShield Ansible Deployment            ║
+          ║  Target: {{ inventory_hostname }}        ║
+          ║  Tag:    {{ docker_tag | default('latest') }}
+          ╚══════════════════════════════════════════╝
+
+    - name: Ensure target dir exists
+      file:
+        path: "{{ compose_dir }}"
+        state: directory
+        mode: '0755'
+
+  roles:
+    - role: vault_setup
+      tags: vault
+
+    - role: deploy
+      tags: deploy
+
+  post_tasks:
+    - name: Health check after deploy
+      uri:
+        url: "http://localhost:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      register: health
+      retries: 5
+      delay: 5
+      until: health.status == 200
+
+    - name: Report success
+      debug:
+        msg: "✅ FinShield deployed and healthy on {{ inventory_hostname }}"

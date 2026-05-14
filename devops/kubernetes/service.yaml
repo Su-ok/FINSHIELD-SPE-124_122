@@ -1,0 +1,44 @@
+---
+# FinShield — Kubernetes Service
+# Exposes the API within the cluster and optionally via LoadBalancer
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: finshield-api-service
+  namespace: finshield
+  labels:
+    app: finshield-api
+spec:
+  selector:
+    app: finshield-api
+  type: LoadBalancer      # Change to ClusterIP if using Ingress
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+
+---
+# Ingress (optional — use if you have an Ingress controller like nginx)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: finshield-ingress
+  namespace: finshield
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: finshield.local       # Replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: finshield-api-service
+                port:
+                  number: 80

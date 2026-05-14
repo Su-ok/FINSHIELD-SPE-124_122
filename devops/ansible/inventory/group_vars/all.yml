@@ -1,0 +1,29 @@
+---
+# FinShield — Group Variables
+# ⚠️  Replace all placeholder values before deploying
+# In production: store sensitive values in Vault, not here
+
+# Application
+docker_tag: "latest"
+app_port: 8000
+compose_dir: /opt/finshield
+
+# Docker Hub
+dockerhub_user: "YOUR_DOCKERHUB_USERNAME"       # ← Replace
+dockerhub_pass: "{{ lookup('env', 'DOCKERHUB_PASS') }}"  # From env or Vault
+
+# HashiCorp Vault
+vault_host: "localhost"
+vault_addr: "http://{{ vault_host }}:8200"
+vault_token: "{{ lookup('env', 'VAULT_TOKEN') }}"        # From env
+
+# PostgreSQL (stored in Vault — these are fallback defaults)
+db_host: "postgres"
+db_port: 5432
+db_name: "finshield"
+db_user: "finshield"
+db_password: "{{ lookup('env', 'DB_PASSWORD') }}"
+
+# API Security
+fraud_api_key: "{{ lookup('env', 'FRAUD_API_KEY') }}"
+jwt_secret: "{{ lookup('env', 'JWT_SECRET') }}"

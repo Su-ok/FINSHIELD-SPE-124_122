@@ -1,0 +1,505 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FinShield — Secure Dashboard</title>
+<style>
+:root{--bg:#0a0e1a;--s1:#111827;--s2:#1a2235;--bd:#1e2d45;--ac:#00d4aa;--b2:#3b82f6;--ye:#f59e0b;--re:#ef4444;--tx:#e2e8f0;--mu:#64748b;--gr:#22c55e;--pu:#a78bfa}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);z-index:100;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:2rem;width:360px;max-width:92vw}
+.at{display:flex;border-bottom:1px solid var(--bd);margin-bottom:1.2rem}
+.at-t{flex:1;padding:.5rem;text-align:center;cursor:pointer;font-size:.88rem;color:var(--mu);border-bottom:2px solid transparent}
+.at-t.on{color:var(--ac);border-bottom-color:var(--ac)}
+.topbar{background:var(--s1);border-bottom:1px solid var(--bd);padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:10}
+.logo{display:flex;align-items:center;gap:10px}
+.li{width:34px;height:34px;background:linear-gradient(135deg,var(--ac),var(--b2));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.lt{font-size:1.15rem;font-weight:700}.lt span{color:var(--ac)}
+.tabs{display:flex;gap:4px;background:var(--s2);padding:4px;border-radius:10px}
+.tab{padding:.38rem .9rem;border-radius:7px;cursor:pointer;font-size:.82rem;border:none;background:transparent;color:var(--mu);transition:all .2s}
+.tab.on{background:var(--s1);color:var(--tx);font-weight:600}
+.main{max-width:1280px;margin:0 auto;padding:1.5rem}
+.pg{display:none}.pg.on{display:block}
+.ttl{font-size:1.4rem;font-weight:700;margin-bottom:.2rem}
+.sub{color:var(--mu);font-size:.85rem;margin-bottom:1.3rem}
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.9rem;margin-bottom:1.3rem}
+.st{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:1.1rem;border-top:3px solid var(--ac)}
+.sl{font-size:.71rem;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.3rem}
+.sv{font-size:1.7rem;font-weight:800}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1.3rem}
+@media(max-width:768px){.g2{grid-template-columns:1fr}}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:1.3rem;margin-bottom:.9rem}
+.ct{font-size:.88rem;font-weight:600;margin-bottom:.9rem;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.fg{margin-bottom:.8rem}
+label{display:block;font-size:.76rem;color:var(--mu);margin-bottom:.28rem}
+input,select{width:100%;background:var(--s2);border:1px solid var(--bd);color:var(--tx);padding:.52rem .8rem;border-radius:8px;font-size:.86rem;outline:none;transition:border .2s}
+input:focus,select:focus{border-color:var(--ac)}
+.btn{width:100%;padding:.65rem;font-weight:700;border:none;border-radius:8px;cursor:pointer;font-size:.86rem;margin-top:.3rem;transition:opacity .2s}
+.btn:hover{opacity:.85}.btn:disabled{opacity:.4;cursor:not-allowed}
+.bg{background:linear-gradient(135deg,var(--ac),#00a884);color:#000}
+.bb{background:linear-gradient(135deg,var(--b2),#1d4ed8);color:#fff}
+.bp{background:linear-gradient(135deg,var(--pu),#7c3aed);color:#fff}
+.br{background:transparent;border:1px solid var(--re);color:var(--re)}
+.bsm{width:auto;padding:.32rem .75rem;font-size:.76rem;margin-top:0}
+.al{border-radius:8px;padding:.6rem .85rem;margin-top:.65rem;font-size:.8rem;display:none}
+.al.on{display:block}.aok{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);color:var(--ac)}
+.aer{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.txl{max-height:290px;overflow-y:auto}
+.txi{display:flex;align-items:center;justify-content:space-between;padding:.58rem 0;border-bottom:1px solid var(--bd)}
+.txi:last-child{border-bottom:none}
+.chip{padding:2px 8px;border-radius:999px;font-size:.66rem;font-weight:700}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.3rem}
+.cc{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:1.1rem;cursor:pointer;transition:all .2s}
+.cc:hover{border-color:var(--ac);transform:translateY(-2px)}.abar{height:4px;border-radius:2px;background:var(--bd);margin-top:.7rem;overflow:hidden}
+.afill{height:100%;border-radius:2px;background:var(--gr)}
+.unit{width:34px;height:34px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;transition:all .15s;border:2px solid transparent;user-select:none;margin:3px}
+.av{background:rgba(34,197,94,.15);color:var(--gr);border-color:rgba(34,197,94,.3)}
+.av:hover{background:rgba(34,197,94,.3);transform:scale(1.1)}
+.sel{background:rgba(167,139,250,.25);color:var(--pu);border-color:var(--pu);transform:scale(1.1)}
+.hd{background:rgba(245,158,11,.12);color:var(--ye);border-color:rgba(245,158,11,.3);cursor:not-allowed}
+.so{background:rgba(239,68,68,.12);color:var(--re);border-color:rgba(239,68,68,.2);cursor:not-allowed}
+.tw{background:var(--bd);border-radius:999px;height:6px;margin:.45rem 0;overflow:hidden}
+.tb{height:100%;border-radius:999px;transition:width 1s linear,background .5s}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+</style></head><body>
+
+<div class="ov" id="authModal">
+  <div class="modal">
+    <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:1.2rem">
+      <div class="li">🛡</div><div class="lt">Fin<span>Shield</span></div>
+    </div>
+    <div class="at">
+      <div class="at-t on" id="tl" onclick="sw('l')">Login</div>
+      <div class="at-t" id="tr" onclick="sw('r')">Register</div>
+    </div>
+    <div id="lf">
+      <div class="fg"><label>Username or Email</label><input id="lu" placeholder="username or email"/></div>
+      <div class="fg"><label>Password</label><input id="lp" type="password" placeholder="••••••••"/></div>
+      <button class="btn bg" onclick="doLogin()">Login to FinShield</button>
+      <div class="al" id="la"></div>
+    </div>
+    <div id="rf" style="display:none">
+      <div class="fg"><label>Username</label><input id="ru" placeholder="johndoe"/></div>
+      <div class="fg"><label>Email</label><input id="re" placeholder="john@example.com"/></div>
+      <div class="fg"><label>Full Name</label><input id="rn" placeholder="John Doe"/></div>
+      <div class="fg"><label>Password</label><input id="rp" type="password" placeholder="••••••••"/></div>
+      <button class="btn bb" onclick="doReg()">Create Account</button>
+      <div class="al" id="ra"></div>
+    </div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="logo"><div class="li">🛡</div><div class="lt">Fin<span>Shield</span></div></div>
+  <div class="tabs">
+    <button class="tab on" onclick="showTab('d')">📊 Dashboard</button>
+    <button class="tab" onclick="showTab('s')">📈 Stock Market</button>
+    <button class="tab" onclick="showTab('p')">💼 Portfolio</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:.7rem;font-size:.82rem">
+    <span id="uname" style="color:var(--mu)"></span>
+    <span class="chip" style="background:rgba(0,212,170,.15);color:var(--ac);border:1px solid rgba(0,212,170,.3)">● LIVE</span>
+    <button class="btn br bsm" id="lob" style="display:none" onclick="logout()">Logout</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="main pg on" id="pg-d">
+  <div class="ttl">Transaction Command Center</div>
+  <div class="sub">Secure · Monitored · Automated via Jenkins + Vault + ELK + Kubernetes</div>
+  <div class="sg">
+    <div class="st" style="border-top-color:var(--gr)"><div class="sl">Total Transactions</div><div class="sv" id="sTot">0</div></div>
+    <div class="st" style="border-top-color:var(--b2)"><div class="sl">Total Volume</div><div class="sv" id="sVol">$0</div></div>
+    <div class="st" style="border-top-color:var(--ye)"><div class="sl">Fraud Flagged</div><div class="sv" id="sFrd">0</div></div>
+    <div class="st"><div class="sl">API Status</div><div class="sv" style="font-size:1rem;color:var(--gr)" id="sHlth">● Online</div><div style="font-size:.72rem;color:var(--mu)" id="sVer">v1.0.0</div></div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="ct"><span class="dot" style="background:var(--gr);box-shadow:0 0 8px var(--gr)"></span>New Transaction</div>
+      <div class="fg"><label>Sender Account</label><input id="tSn" value="ACC-001234"/></div>
+      <div class="fg"><label>Receiver Account</label><input id="tRc" value="ACC-005678"/></div>
+      <div class="fg"><label>Amount (USD)</label><input id="tAm" type="number" value="500"/></div>
+      <div class="fg"><label>Type</label><select id="tTy"><option value="transfer">Transfer</option><option value="payment">Payment</option><option value="withdrawal">Withdrawal</option><option value="deposit">Deposit</option></select></div>
+      <button class="btn bg" id="txBtn" onclick="sendTx()">⚡ Execute Transaction</button>
+      <div class="al" id="txAl"></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="dot" style="background:var(--b2)"></span>DevSecOps Pipeline</div>
+      <div style="display:flex;align-items:center;gap:0;margin-bottom:.9rem">
+        <div style="text-align:center;flex:1"><div style="width:26px;height:26px;border-radius:50%;background:var(--gr);color:#000;display:flex;align-items:center;justify-content:center;font-size:11px;margin:0 auto 3px">✓</div><div style="font-size:.6rem;color:var(--mu)">Git</div></div>
+        <div style="flex:1;height:2px;background:var(--gr);margin-bottom:16px"></div>
+        <div style="text-align:center;flex:1"><div style="width:26px;height:26px;border-radius:50%;background:var(--gr);color:#000;display:flex;align-items:center;justify-content:center;font-size:11px;margin:0 auto 3px">✓</div><div style="font-size:.6rem;color:var(--mu)">Jenkins</div></div>
+        <div style="flex:1;height:2px;background:var(--gr);margin-bottom:16px"></div>
+        <div style="text-align:center;flex:1"><div style="width:26px;height:26px;border-radius:50%;background:var(--gr);color:#000;display:flex;align-items:center;justify-content:center;font-size:11px;margin:0 auto 3px">✓</div><div style="font-size:.6rem;color:var(--mu)">Docker</div></div>
+        <div style="flex:1;height:2px;background:var(--gr);margin-bottom:16px"></div>
+        <div style="text-align:center;flex:1"><div style="width:26px;height:26px;border-radius:50%;background:var(--gr);color:#000;display:flex;align-items:center;justify-content:center;font-size:11px;margin:0 auto 3px">✓</div><div style="font-size:.6rem;color:var(--mu)">K8s</div></div>
+      </div>
+      <div style="background:var(--s2);border-radius:8px;padding:.85rem;font-size:.76rem">
+        <div style="display:flex;justify-content:space-between;margin-bottom:.4rem"><span style="color:var(--mu)">Vault</span><span style="color:var(--gr)">● Active</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:.4rem"><span style="color:var(--mu)">ELK Stack</span><span style="color:var(--gr)">● Streaming</span></div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:.4rem"><span style="color:var(--mu)">K8s HPA</span><span style="color:var(--gr)">● Scaling</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--mu)">Ansible</span><span style="color:var(--gr)">● Applied</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="dot" style="background:var(--ye)"></span>Live Transaction Feed <span style="color:var(--gr);font-size:.7rem;margin-left:8px;animation:pulse 2s infinite">● LIVE</span></div>
+    <div class="txl" id="txList"><div style="text-align:center;color:var(--mu);padding:2rem;font-size:.82rem">Loading...</div></div>
+  </div>
+</div>
+
+<!-- STOCKS -->
+<div class="main pg" id="pg-s">
+  <div class="ttl">📈 Stock Market</div>
+  <div class="sub">Select a company · Pick stock units · Lock for 10 min · Confirm payment</div>
+  <div id="compView">
+    <div class="cg" id="compGrid"><div style="color:var(--mu)">Loading...</div></div>
+  </div>
+  <div id="mxView" style="display:none">
+    <button onclick="backComp()" style="background:transparent;border:1px solid var(--bd);color:var(--tx);padding:.38rem .9rem;border-radius:8px;cursor:pointer;font-size:.8rem;margin-bottom:1rem">← Back</button>
+    <div id="mxStatusArea" style="margin-bottom:1rem"></div>
+    <div class="g2">
+      <div class="card" style="grid-column: span 2">
+        <div class="ct" id="mxHead"></div>
+        <div id="mxGrid"></div>
+        <div id="selBox" style="display:none;margin-top:.9rem;background:var(--s2);border-radius:8px;padding:.85rem">
+          <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:.4rem"><span style="color:var(--mu)">Selected</span><span id="selCnt" style="font-weight:700;color:var(--pu)">0 units</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:.83rem;margin-bottom:.7rem"><span style="color:var(--mu)">Total</span><span id="selTot" style="font-weight:700;color:var(--ye)">₹0</span></div>
+          <button class="btn bp" onclick="doHold()">🔒 Lock & Hold (10 min)</button>
+        </div>
+        <div class="al" id="mxAl"></div>
+      </div>
+      <div class="card" id="holdBox" style="display:none;grid-column: span 2; border-top: 3px solid var(--pu)">
+        <div class="ct"><span class="dot" style="background:var(--pu);box-shadow:0 0 8px var(--pu)"></span>Active Hold — Action Required</div>
+        <div style="display:grid;grid-template-columns: 1fr 1fr; gap: 1rem">
+          <div>
+            <div style="font-size:.74rem;color:var(--mu)">Hold ID</div>
+            <div id="hId" style="font-family:monospace;color:var(--pu);font-size:.76rem;margin-bottom:.7rem;word-break:break-all"></div>
+            <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Status</span><span id="hSt" style="font-weight:700"></span></div>
+            <div style="display:flex;justify-content:space-between;font-size:.82rem"><span style="color:var(--mu)">Total Amount</span><span id="hAm" style="font-weight:700;color:var(--ye)"></span></div>
+          </div>
+          <div style="border-left: 1px solid var(--bd); padding-left: 1rem">
+            <div style="font-size:.72rem;color:var(--mu);margin-bottom:.3rem">Payment window</div>
+            <div class="tw"><div class="tb" id="hBar" style="width:100%;background:var(--pu)"></div></div>
+            <div style="text-align:center;font-size:1.2rem;font-weight:800;margin-bottom:.7rem" id="hTm">10:00</div>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn bg" style="flex:1" id="hCon" onclick="doConfirm()">✅ Confirm & Buy</button>
+              <button class="btn br" style="flex:1" id="hRel" onclick="doRelease()">✖ Cancel</button>
+            </div>
+          </div>
+        </div>
+        <div class="al" id="hAl"></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:1.2rem;font-size:.76rem;color:var(--mu);margin-top:.7rem">
+      <span><span class="unit av" style="width:18px;height:18px;margin:0 4px 0 0;vertical-align:middle"></span>Available</span>
+      <span><span class="unit sel" style="width:18px;height:18px;margin:0 4px 0 0;vertical-align:middle"></span>Your pick</span>
+      <span><span class="unit hd" style="width:18px;height:18px;margin:0 4px 0 0;vertical-align:middle"></span>Held</span>
+      <span><span class="unit so" style="width:18px;height:18px;margin:0 4px 0 0;vertical-align:middle"></span>Sold</span>
+    </div>
+  </div>
+</div>
+
+<!-- PORTFOLIO -->
+<div class="main pg" id="pg-p">
+  <div class="ttl">💼 My Portfolio</div>
+  <div class="sub">Your confirmed stock purchases</div>
+  <div id="portCard"><div style="text-align:center;color:var(--mu);padding:2rem">Login to view portfolio</div></div>
+</div>
+
+<div style="text-align:center;color:var(--mu);font-size:.7rem;padding:2rem">FinShield v1.0.0 · FastAPI · Vault · ELK · Kubernetes · CSE 816</div>
+
+<script>
+let tok=localStorage.getItem('fs_tok'),usr=JSON.parse(localStorage.getItem('fs_usr')||'null');
+let selU={},actHold=null,tmrIv=null;
+const HD=600;
+
+async function api(path,opts={}){
+  const h={'Content-Type':'application/json'};
+  if(tok)h['Authorization']='Bearer '+tok;
+  const r=await fetch(path,{...opts,headers:h});
+  return r.json();
+}
+
+function al(el,msg,err){el.textContent=msg;el.className='al on '+(err?'aer':'aok');setTimeout(()=>el.classList.remove('on'),5000);}
+
+// ── Auth ────────────────────────────────────────────────────────────────────
+function sw(m){
+  document.getElementById('lf').style.display=m==='l'?'block':'none';
+  document.getElementById('rf').style.display=m==='r'?'block':'none';
+  document.getElementById('tl').classList.toggle('on',m==='l');
+  document.getElementById('tr').classList.toggle('on',m==='r');
+}
+
+async function doLogin(){
+  const r=await api('/api/v1/auth/login',{method:'POST',body:JSON.stringify({username:document.getElementById('lu').value,password:document.getElementById('lp').value})});
+  if(r.access_token)saveSession(r);
+  else al(document.getElementById('la'),r.detail||'Login failed',true);
+}
+
+async function doReg(){
+  const r=await api('/api/v1/auth/register',{method:'POST',body:JSON.stringify({username:document.getElementById('ru').value,email:document.getElementById('re').value,full_name:document.getElementById('rn').value,password:document.getElementById('rp').value})});
+  if(r.access_token)saveSession(r);
+  else al(document.getElementById('ra'),r.detail||'Registration failed',true);
+}
+
+function saveSession(r){
+  tok=r.access_token;usr=r.user;
+  localStorage.setItem('fs_tok',tok);localStorage.setItem('fs_usr',JSON.stringify(usr));
+  document.getElementById('authModal').style.display='none';
+  document.getElementById('uname').textContent='👤 '+usr.username;
+  document.getElementById('lob').style.display='inline-block';
+  loadDash();loadComp();
+}
+
+function logout(){
+  tok=null;usr=null;selU={};actHold=null;
+  localStorage.removeItem('fs_tok');localStorage.removeItem('fs_usr');
+  document.getElementById('authModal').style.display='flex';
+  document.getElementById('uname').textContent='';
+  document.getElementById('lob').style.display='none';
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+function showTab(t){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('pg-'+t).classList.add('on');
+  event.target.classList.add('on');
+  if(t==='s')loadComp();
+  if(t==='p')loadPort();
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+async function loadDash(){
+  try{
+    const h=await api('/health');
+    document.getElementById('sHlth').textContent='● Online';
+    document.getElementById('sVer').textContent='v'+h.version;
+  }catch{document.getElementById('sHlth').textContent='● Degraded';}
+  try{
+    const d=await api('/api/v1/transactions/');
+    const l=document.getElementById('txList');
+    if(!d.transactions||!d.transactions.length){l.innerHTML='<div style="text-align:center;color:var(--mu);padding:2rem;font-size:.82rem">No transactions yet.</div>';return;}
+    let tot=0,vol=0,frd=0;
+    l.innerHTML=[...d.transactions].reverse().map(tx=>{
+      tot++;vol+=tx.amount;if(tx.fraud_score>0.6)frd++;
+      const f=tx.fraud_score>0.6;
+      return`<div class="txi">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:34px;height:34px;border-radius:8px;background:${f?'rgba(245,158,11,.15)':tx.transaction_type==='deposit'?'rgba(34,197,94,.15)':'rgba(239,68,68,.15)'};display:flex;align-items:center;justify-content:center;font-size:13px">${f?'⚠️':tx.transaction_type==='deposit'?'⬇️':'⬆️'}</div>
+          <div><div style="font-size:.78rem;font-weight:600">${tx.transaction_id.slice(0,16)}…</div><div style="font-size:.7rem;color:var(--mu)">${tx.transaction_type}·${new Date(tx.timestamp).toLocaleTimeString()}</div></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:700;color:${tx.transaction_type==='deposit'?'var(--gr)':'var(--re)'}">$${tx.amount.toFixed(2)}</div>
+          <span class="chip" style="${f?'background:rgba(245,158,11,.15);color:var(--ye)':'background:rgba(34,197,94,.15);color:var(--gr)'}">${f?'FLAGGED':'CLEARED'}</span>
+        </div></div>`;
+    }).join('');
+    document.getElementById('sTot').textContent=tot;
+    document.getElementById('sVol').textContent='$'+vol.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    document.getElementById('sFrd').textContent=frd;
+  }catch(e){console.error(e);}
+}
+
+async function sendTx(){
+  const btn=document.getElementById('txBtn'),a=document.getElementById('txAl');
+  btn.disabled=true;btn.textContent='⏳ Processing…';
+  const r=await api('/api/v1/transactions/',{method:'POST',body:JSON.stringify({sender_account:document.getElementById('tSn').value,receiver_account:document.getElementById('tRc').value,amount:parseFloat(document.getElementById('tAm').value),transaction_type:document.getElementById('tTy').value})});
+  const f=r.fraud_score>0.6;
+  al(a,f?`⚠️ FLAGGED! Score:${(r.fraud_score*100).toFixed(0)}% ID:${r.transaction_id}`:`✅ Done! ID:${r.transaction_id} Score:${(r.fraud_score*100).toFixed(0)}%`,f);
+  btn.disabled=false;btn.textContent='⚡ Execute Transaction';
+  loadDash();
+}
+
+// ── Stocks ───────────────────────────────────────────────────────────────────
+async function loadComp(){
+  const g=document.getElementById('compGrid');
+  const d=await api('/api/v1/stocks/companies');
+  if(!d.companies){g.innerHTML='<div style="color:var(--mu)">Failed to load companies.</div>';return;}
+  g.innerHTML=d.companies.map(c=>{
+    const pct=Math.round((c.available_units/c.total_units)*100);
+    const chgCol=c.change_pct>=0?'var(--gr)':'var(--re)';
+    return`<div class="cc" onclick="openMatrix('${c.company_id}')">
+      <div style="font-size:2rem;margin-bottom:.4rem">${c.logo}</div>
+      <div style="font-weight:700;font-size:.92rem">${c.name}</div>
+      <div style="color:var(--mu);font-size:.74rem;font-family:monospace">${c.ticker} · ${c.sector}</div>
+      <div style="font-size:1rem;font-weight:800;margin:.45rem 0 .2rem">₹${c.current_price.toLocaleString('en-IN')}</div>
+      <div style="font-size:.76rem;color:${chgCol}">${c.change_pct>=0?'▲':'▼'} ${Math.abs(c.change_pct)}%</div>
+      <div class="abar"><div class="afill" style="width:${pct}%"></div></div>
+      <div style="font-size:.7rem;color:var(--mu);margin-top:.3rem">${c.available_units}/${c.total_units} units available</div>
+    </div>`;
+  }).join('');
+}
+
+async function openMatrix(cid){
+  if(!tok){
+    // Not logged in — re-show the auth modal
+    document.getElementById('authModal').style.display='flex';
+    return;
+  }
+  currentCid=cid;
+  selU={};updateSelBox();
+  document.getElementById('compView').style.display='none';
+  document.getElementById('mxView').style.display='block';
+  if(!actHold) document.getElementById('holdBox').style.display='none';
+  document.getElementById('mxGrid').innerHTML='<div style="color:var(--mu);font-size:.82rem;padding:.5rem">Loading matrix...</div>';
+  document.getElementById('mxAl').className='al';
+  await refreshMatrix(cid);
+}
+
+async function refreshMatrix(cid){
+  try{
+    const d=await api('/api/v1/stocks/companies/'+cid);
+    if(d.detail){
+      document.getElementById('mxAl').textContent='Error: '+d.detail;
+      document.getElementById('mxAl').className='al on aer';
+      return;
+    }
+    if(!d.company||!d.matrix){
+      document.getElementById('mxAl').textContent='Could not load company data. Try again.';
+      document.getElementById('mxAl').className='al on aer';
+      return;
+    }
+    const c=d.company;
+    document.getElementById('mxHead').innerHTML=`<span style="font-size:1.3rem">${c.logo}</span>${c.name} <span style="color:var(--mu);font-size:.78rem">${c.ticker}</span> <span style="color:var(--gr);font-size:.75rem">${c.available_units}/${c.total_units} available</span>`;
+    const tiers=['Bronze','Silver','Gold','Platinum'];
+    let html='';
+    tiers.forEach(tier=>{
+      const units=d.matrix[tier];
+      if(!units||!units.length)return;
+      const price=units[0].price;
+      html+=`<div style="margin-bottom:.8rem"><div style="font-size:.76rem;color:var(--mu);margin-bottom:.35rem">${tier} <span style="color:var(--ye);font-weight:700">&#8377;${price}</span></div><div>`;
+      units.forEach(u=>{
+        let cls='unit ';
+        if(u.status==='SOLD')cls+='so';
+        else if(u.status==='HELD')cls+='hd';
+        else if(selU[u.unit_id])cls+='sel';
+        else cls+='av';
+        const tip=u.status==='HELD'?`held by ${u.held_by_username||'other'} (${u.seconds_remaining||'?'}s left)`:u.status;
+        html+=`<div class="${cls}" title="${tip}" onclick="toggleU('${u.unit_id}',${price},'${u.status}')">${u.col+1}</div>`;
+      });
+      html+='</div></div>';
+    });
+    document.getElementById('mxGrid').innerHTML=html;
+  }catch(e){
+    document.getElementById('mxAl').textContent='Network error: '+e.message;
+    document.getElementById('mxAl').className='al on aer';
+  }
+}
+
+let currentCid='';
+
+function toggleU(uid,price,status){
+  if(status!=='AVAILABLE'&&!selU[uid])return;
+  if(selU[uid])delete selU[uid];
+  else selU[uid]=price;
+  updateSelBox();
+  // Only redraw grid, don't clear selection
+  refreshMatrix(currentCid);
+}
+
+function updateSelBox(){
+  const cnt=Object.keys(selU).length;
+  const tot=Object.values(selU).reduce((a,b)=>a+b,0);
+  document.getElementById('selBox').style.display=cnt>0?'block':'none';
+  document.getElementById('selCnt').textContent=cnt+' unit'+(cnt!==1?'s':'');
+  document.getElementById('selTot').textContent='₹'+tot.toLocaleString('en-IN');
+}
+
+async function doHold(){
+  const ids=Object.keys(selU);
+  if(!ids.length)return;
+  try {
+    const r=await api('/api/v1/stocks/hold',{method:'POST',body:JSON.stringify({unit_ids:ids})});
+    if(r.hold_id){
+      actHold=r.hold_id;
+      selU={};updateSelBox();
+      await refreshMatrix(currentCid);
+      showHoldBox(r);
+    } else {
+      al(document.getElementById('mxAl'),r.detail||'Hold failed',true);
+    }
+  } catch(e) {
+    al(document.getElementById('mxAl'),'System error. Try again.',true);
+  }
+}
+
+function showHoldBox(h){
+  const el = document.getElementById('holdBox');
+  if(!el) return;
+  el.style.display='block';
+  // Force scroll to the confirmation box so the user sees it
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  
+  document.getElementById('hId').textContent=h.hold_id || 'N/A';
+  document.getElementById('hAm').textContent='₹'+(h.total_amount||0).toLocaleString('en-IN');
+  updHoldStatus(h);
+  startTimer(h.seconds_remaining || 600);
+}
+
+function updHoldStatus(h){
+  const el=document.getElementById('hSt');
+  const cols={HELD:'var(--pu)',COMPLETED:'var(--gr)',EXPIRED:'var(--mu)',RELEASED:'var(--re)'};
+  el.textContent=h.status;el.style.color=cols[h.status]||'var(--tx)';
+  const held=h.status==='HELD';
+  document.getElementById('hCon').disabled=!held;
+  document.getElementById('hRel').disabled=!held;
+}
+
+function startTimer(sec){
+  if(tmrIv)clearInterval(tmrIv);
+  let rem=sec;
+  const tick=()=>{
+    rem=Math.max(0,rem-1);
+    const pct=(rem/HD)*100;
+    const bar=document.getElementById('hBar');
+    bar.style.width=pct+'%';
+    bar.style.background=pct>50?'var(--pu)':pct>20?'var(--ye)':'var(--re)';
+    const m=String(Math.floor(rem/60)).padStart(2,'0'),s=String(rem%60).padStart(2,'0');
+    document.getElementById('hTm').textContent=rem>0?m+':'+s:'Expired';
+    if(rem===0){clearInterval(tmrIv);updHoldStatus({status:'EXPIRED'});openMatrix(currentCid);}
+  };
+  tick();tmrIv=setInterval(tick,1000);
+}
+
+async function doConfirm(){
+  if(!actHold)return;
+  const r=await api('/api/v1/stocks/holds/'+actHold+'/confirm',{method:'POST'});
+  if(r.hold_id){clearInterval(tmrIv);document.getElementById('hTm').textContent='Confirmed ✅';document.getElementById('hBar').style.width='100%';document.getElementById('hBar').style.background='var(--gr)';updHoldStatus(r);openMatrix(currentCid);al(document.getElementById('hAl'),'✅ Payment confirmed! Stocks are yours.',false);}
+  else al(document.getElementById('hAl'),r.detail||'Confirm failed',true);
+}
+
+async function doRelease(){
+  if(!actHold)return;
+  const r=await api('/api/v1/stocks/holds/'+actHold+'/release',{method:'POST'});
+  if(r.hold_id){clearInterval(tmrIv);document.getElementById('hTm').textContent='Released';document.getElementById('hBar').style.width='0';updHoldStatus(r);openMatrix(currentCid);al(document.getElementById('hAl'),'Hold released. Stocks back to market.',false);}
+  else al(document.getElementById('hAl'),r.detail||'Release failed',true);
+}
+
+function backComp(){
+  document.getElementById('mxView').style.display='none';
+  document.getElementById('compView').style.display='block';
+  selU={};loadComp();
+}
+
+// ── Portfolio ────────────────────────────────────────────────────────────────
+async function loadPort(){
+  if(!tok){document.getElementById('portCard').innerHTML='<div style="text-align:center;color:var(--mu);padding:2rem">Please login to view your portfolio</div>';return;}
+  const d=await api('/api/v1/stocks/portfolio');
+  const el=document.getElementById('portCard');
+  if(!d.portfolio||!d.portfolio.length){el.innerHTML='<div class="card" style="text-align:center;color:var(--mu);padding:2rem">No purchases yet. Go to Stock Market to buy stocks!</div>';return;}
+  let total=0;
+  el.innerHTML=d.portfolio.map(h=>{total+=h.total_amount;return`<div class="card"><div class="ct"><span class="dot" style="background:var(--gr)"></span>${h.company_name || 'Stock Purchase'} (${h.ticker || 'SEC'}) <span class="chip" style="background:var(--pu);color:white;margin-left:8px;text-transform:capitalize">${h.tier || 'Unit'}</span> <span class="chip" style="background:rgba(34,197,94,.15);color:var(--gr)">OWNED</span></div><div style="font-size:.7rem;color:var(--mu);margin-bottom:.5rem">${h.hold_id}</div><div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Units purchased</span><span style="font-weight:700">${h.unit_ids.length}</span></div><div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:.35rem"><span style="color:var(--mu)">Amount paid</span><span style="font-weight:700;color:var(--ye)">₹${h.total_amount.toLocaleString('en-IN')}</span></div><div style="font-size:.72rem;color:var(--mu)">Purchased: ${new Date(h.created_at).toLocaleString()}</div></div>`;}).join('')+`<div style="background:var(--s2);border-radius:8px;padding:.85rem;display:flex;justify-content:space-between;font-size:.9rem"><span style="color:var(--mu)">Total Invested</span><span style="font-weight:800;color:var(--ac)">₹${total.toLocaleString('en-IN')}</span></div>`;
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+(function init(){
+  if(tok&&usr){
+    document.getElementById('authModal').style.display='none';
+    document.getElementById('uname').textContent='👤 '+usr.username;
+    document.getElementById('lob').style.display='inline-block';
+    loadDash();loadComp();
+  }
+  setInterval(loadDash,10000);
+  setInterval(()=>{if(document.getElementById('pg-s').classList.contains('on'))loadComp();},8000);
+})();
+
+</script></body></html>
