@@ -57,8 +57,8 @@ pipeline {
             steps {
                 sh """
                     cd app/backend
-                    pip install -r requirements.txt --quiet
-                    pip install pytest httpx --quiet
+                    pip install -r requirements.txt --quiet --break-system-packages
+                    pip install pytest httpx --quiet --break-system-packages
                     cd ../..
                     python -m pytest app/tests/ -v --tb=short --junitxml=test-results.xml
                 """

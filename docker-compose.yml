@@ -177,7 +177,9 @@ services:
 
   # ── 8. Jenkins (CI/CD) ────────────────────────────────────────────────────
   jenkins:
-    image: jenkins/jenkins:lts-jdk17
+    build:
+      context: ./devops/jenkins
+      dockerfile: Dockerfile.jenkins
     container_name: finshield-jenkins
     restart: unless-stopped
     privileged: true
