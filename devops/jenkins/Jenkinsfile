@@ -6,7 +6,7 @@ pipeline {
 
     environment {
         APP_NAME        = "finshield-api"
-        DOCKERHUB_USER  = "sid30814" // Hardcoded for your repo name
+        DOCKERHUB_USER  = "suchirokram" // Updated for your repo name
         DOCKER_IMAGE    = "${DOCKERHUB_USER}/${APP_NAME}"
         DOCKER_TAG      = "${env.BUILD_NUMBER}"
         VAULT_ADDR      = "http://vault:8200"

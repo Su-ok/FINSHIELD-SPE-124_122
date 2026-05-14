@@ -1,7 +1,6 @@
 # 🛡️ FinShield — DevSecOps SDLC Pipeline
 
 
-
 ---
 
 ## 🏗️ Architecture
